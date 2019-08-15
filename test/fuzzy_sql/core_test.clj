@@ -50,22 +50,12 @@
 
 (deftest test-insertion
   (testing "creating the table"
-    (let [rand-tb-name (-> (UUID) (randomUUid))
-          ddl (generate-ddl test-data "table1")]
-      (jdbc/execute! ds [ddl]))))
+    (let [rand-tb-name (-> (UUID/randomUUID) str (.replace "-" ""))]
+      (println "inserting in table" rand-tb-name)
+      (create-or-insert ds test-data rand-tb-name))))
 
 
 
 
-(defn get-column-names
-  "Take database spec, return all column names from the database metadata"
-  [db]
-  (with-connection db
-                   (into #{}
-                         (map #(str (% :table_name) "." (% :column_name))
-                              (resultset-seq (->
-                                               (connection)
-                                               (.getMetaData)
-                                               (.getColumns nil nil nil "%")))))))
 
 

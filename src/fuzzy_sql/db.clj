@@ -10,7 +10,11 @@
         (rs/datafiable-result-set ds {}))))
 
 
-
+(defn get-tables [ds table]
+  (with-open [c (jdbc/get-connection ds)]
+    (-> (.getMetaData c)
+        (.getTables nil nil table (into-array String ["TABLE"]))
+        (rs/datafiable-result-set ds {}))))
 
 
 

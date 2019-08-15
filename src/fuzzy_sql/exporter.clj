@@ -1,5 +1,8 @@
 (ns fuzzy-sql.exporter
-  (:require [fuzzy-sql.db :as db])
+  (:require
+    [fuzzy-sql.db :as db]
+    [next.jdbc :as jdbc]
+    [next.jdbc.sql :as sql])
   (:import (java.util Date)))
 
 (declare unwind-values-to-keys)
@@ -74,12 +77,9 @@
 (defn weigh [v]
   (cond
     (instance? String v) {:size (count v) :decimals 0}
-
     (instance? Number v) (let [[size decimals] (.split (str v) "\\.")]
                            {:size (count size) :decimals (count (coalesce decimals ""))})
-
     (instance? Date v) {:size 1 :decimals 0}
-
     :else {:size (count (str v)) :decimals 0}))
 
 
@@ -96,6 +96,25 @@
     header-and-max))
 
 
+(defn create-table [ds csv name]
+  (let [ddl-string (generate-ddl csv name)]
+    (jdbc/execute! ds [ddl-string])))
+
+(defn insert-data [ds csv name]
+  (let [[header & data] csv
+        table-name (keyword name)
+        csv-header-key (map #(keyword %1) header)]
+    (sql/insert-multi! ds table-name csv-header-key data)))
+
+
+
+(defn create-or-insert [ds csv name]
+  (let [table-record (db/get-tables ds name)
+        table-count (count table-record)]
+    (when (= 0 table-count) (create-table ds csv name))
+    (insert-data ds csv name)))
+
+
 
 (defn resize-if-necessary [ds csv table-name]
   (let [header-sizes (detect-max-size-per-header csv)]
@@ -104,5 +123,9 @@
 
 
 
-
+; check if table exists
+; create table
+; for each record insert
+; if fails to to adjust table
+; insert again
 
