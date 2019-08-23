@@ -101,17 +101,17 @@
     (jdbc/execute! ds [ddl-string])))
 
 (defn insert-data [ds csv name]
-  (let [[header & data] csv
-        table-name (keyword name)
-        csv-header-key (map #(keyword %1) header)]
-    (sql/insert-multi! ds table-name csv-header-key data)))
+  (let [map-list (to-map-list csv)
+        table-name (keyword name)]
+    (sql/insert! ds table-name map-list)))
 
 
 
 (defn create-or-insert [ds csv name]
   (let [table-record (db/get-tables ds name)
         table-count (count table-record)]
-    (when (= 0 table-count) (create-table ds csv name))
+    (when (= 0 table-count)
+      (create-table ds csv name))
     (insert-data ds csv name)))
 
 

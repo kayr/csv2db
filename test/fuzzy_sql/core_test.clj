@@ -42,7 +42,6 @@
     (is (= (detect-db-type test-data "header") "varchar(255)"))
     (is (= (detect-db-type test-data "age") "bigint"))))
 
-
 (deftest test-generate-ddl
   (testing "testing generate ddl"
     (is (= (generate-ddl test-data "my_table")
@@ -53,6 +52,7 @@
     (let [rand-tb-name (-> (UUID/randomUUID) str (.replace "-" ""))]
       (println "inserting in table" rand-tb-name)
       (create-or-insert ds test-data rand-tb-name))))
+
 
 
 

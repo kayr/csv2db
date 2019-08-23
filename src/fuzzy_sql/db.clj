@@ -3,19 +3,22 @@
             [next.jdbc.result-set :as rs]))
 
 
+(defn with-connection [ds fn-con-consumer]
+  (with-open [c (jdbc/get-connection ds)] (fn-con-consumer c)))
+
+
 (defn get-columns [ds table]
-  (with-open [c (jdbc/get-connection ds)]
-    (-> (.getMetaData c)
-        (.getColumns nil nil table nil)
-        (rs/datafiable-result-set ds {}))))
+  (with-connection ds (fn [c]
+                        (-> (.getMetaData c)
+                            (.getColumns nil nil table nil)
+                            (rs/datafiable-result-set ds {})))))
 
 
 (defn get-tables [ds table]
-  (with-open [c (jdbc/get-connection ds)]
-    (-> (.getMetaData c)
-        (.getTables nil nil table (into-array String ["TABLE"]))
-        (rs/datafiable-result-set ds {}))))
-
+  (with [c (jdbc/get-connection ds)]
+        (-> (.getMetaData c)
+            (.getTables nil nil table (into-array String ["TABLE"]))
+            (rs/datafiable-result-set ds {}))))
 
 
 ;[{:IS_NULLABLE "YES",
