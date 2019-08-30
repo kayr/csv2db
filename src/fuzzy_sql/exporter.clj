@@ -2,17 +2,10 @@
   (:require
     [fuzzy-sql.db :as db]
     [next.jdbc :as jdbc]
+    [fuzzy-sql.utils :as utils]
     [next.jdbc.sql :as sql])
   (:import (java.util Date)))
 
-
-(defn create-map-vk [[k values]]
-  (if (coll? values)
-    (reduce (fn [a v] (assoc a v k)) {} values)
-    {values k}))
-
-(defn unwind-values-to-keys [data-map]
-  (reduce (fn [acc v] (into (create-map-vk v) acc)) {} data-map))
 
 
 (def MYSQL-TO-JAVA-MAPPINGS {"varchar(255)"  [String]
@@ -20,34 +13,16 @@
                              "numeric(19,6)" [Float Double BigDecimal]
                              "datetime"      [java.sql.Date Date]})
 
-
-(def JAVA-TO-SQL-DB-MAPPING (unwind-values-to-keys MYSQL-TO-JAVA-MAPPINGS))
-
-
-(defn filter-and-pair-with-index [pred? coll]
-  (let [data-and-index (map-indexed vector coll)
-        filtered-item-pairs (filter (fn [[_ item]] (pred? item)) data-and-index)]
-    filtered-item-pairs))
-
-
-(defn index-of [pred? coll]
-  (let [[first-pair] (filter-and-pair-with-index pred? coll)
-        [index] first-pair] index))
-
-
-(defn get-header [csv] (first csv))
+(def JAVA-TO-SQL-DB-MAPPING (utils/unwind-values-to-keys MYSQL-TO-JAVA-MAPPINGS))
 
 
 (defn get-header-index [csv name]
-  (let [header (get-header csv)
-        index (index-of #(= %1 name) header)] index))
-
-(defn get-data [csv] (subvec csv 1 (count csv)))
+  (utils/index-of #(= %1 name) (first csv)))
 
 
 (defn get-column [csv col-name]
   (let [index (get-header-index csv col-name)
-        data (get-data csv)
+        [_ & data] csv
         col-values (map #(nth %1 index) data)] col-values))
 
 
@@ -60,7 +35,7 @@
 (defn detect-db-type [csv name] (JAVA-TO-SQL-DB-MAPPING (detect-data-type csv name)))
 
 (defn generate-ddl [csv name]
-  (let [headers (get-header csv)
+  (let [headers (first csv)
         col-expr (map #(str "`" %1 "` " (detect-db-type csv %1)) headers)
         all-col-exprs (reduce #(str %1 "," %2) col-expr)]
     (str "create table `" name "` (" all-col-exprs ")")))
@@ -84,16 +59,6 @@
   (let [ddl-string (generate-ddl csv name)]
     (jdbc/execute! ds [ddl-string])))
 
-(defn do-with-retry [do-fn correct-fn]
-  (try (do-fn)
-       (catch Exception _
-         (do (correct-fn) (do-fn)))))
-
-
-(defn left-join-pair [join-fn col1 col2]
-  (map (fn [val1] {:left  val1
-                   :right (some (fn [val2] (when (join-fn val1 val2) val2)) col2)}) col1))
-
 (defn get-mysql-data-type [type size decimals]
   (str type "(" (if (> decimals 0) (str size "," decimals) (str size)) ")"))
 
@@ -107,8 +72,8 @@
   (let [{r-size :size r-decimals :decimals} clm1
         {l-size :size l-decimals :decimals} clm2]
     (-> clm1
-        (assoc,, :size (max r-size l-size))
-        (assoc,, :decimals (max r-decimals l-decimals)))))
+        (assoc,,, :size (max r-size l-size))
+        (assoc,,, :decimals (max r-decimals l-decimals)))))
 
 
 (defn may-be-resize [{left :left, right :right}]
@@ -120,7 +85,7 @@
 
 
 (defn get-resize-queries [csv-columns db-columns]
-  (keep may-be-resize (left-join-pair #(= (:name %1) (:name %2)) csv-columns db-columns)))
+  (keep may-be-resize (utils/left-join-pair #(= (:name %1) (:name %2)) csv-columns db-columns)))
 
 
 (defn resize-if-necessary! [ds record-map table-name]
@@ -135,8 +100,8 @@
   (let [map-list (to-map-list csv)
         kw-table-name (keyword str-table-name)]
     (run! (fn [record-item]
-            (do-with-retry #(sql/insert! ds kw-table-name record-item)
-                           #(resize-if-necessary! ds record-item str-table-name))) map-list)))
+            (utils/do-with-retry #(sql/insert! ds kw-table-name record-item)
+                                 #(resize-if-necessary! ds record-item str-table-name))) map-list)))
 
 
 

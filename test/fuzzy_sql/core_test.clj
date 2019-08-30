@@ -41,7 +41,7 @@
 
 (deftest test-index-of
   (let [data [:a :b :c :d]
-        c-index (index-of #(= :c %1) data)]
+        c-index (fuzzy-sql.utils/index-of #(= :c %1) data)]
     (is (= c-index 2))))
 
 (deftest test-detect-data-type
