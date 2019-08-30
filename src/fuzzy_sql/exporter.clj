@@ -59,8 +59,6 @@
 
 (defn detect-db-type [csv name] (JAVA-TO-SQL-DB-MAPPING (detect-data-type csv name)))
 
-(defn if-null [a b] (if (nil? a) b a))
-
 (defn generate-ddl [csv name]
   (let [headers (get-header csv)
         col-expr (map #(str "`" %1 "` " (detect-db-type csv %1)) headers)
@@ -77,7 +75,7 @@
   (cond
     (instance? String v) {:size (count v) :decimals 0}
     (instance? Number v) (let [[size decimals] (.split (str v) "\\.")]
-                           {:size (count size) :decimals (count (if-null decimals ""))})
+                           {:size (count size) :decimals (count (or decimals ""))})
     (instance? Date v) {:size 1 :decimals 0}
     :else {:size (count (str v)) :decimals 0}))
 
@@ -99,13 +97,8 @@
 (defn get-mysql-data-type [type size decimals]
   (str type "(" (if (> decimals 0) (str size "," decimals) (str size)) ")"))
 
-(defn resize [{col-name :name :keys [size decimals :type table-name]}]
-  ;ALTER TABLE students MODIFY name VARCHAR(30)
-  (str "ALTER TABLE `" table-name "` MODIFY " (name col-name) " "
-       (get-mysql-data-type type size decimals)))
-
-
-
+(defn resize-column [{col-name :name :keys [size decimals :type table-name]}]
+  (str "ALTER TABLE `" table-name "` MODIFY " (name col-name) " " (get-mysql-data-type type size decimals)))
 
 (defn add-column [{col-name :name :keys [size decimals type table-name]}]
   (str "ALTER TABLE `" table-name "` ADD COLUMN " (name col-name) " " (get-mysql-data-type type size decimals)))
@@ -122,7 +115,7 @@
   (cond
     (nil? right) (add-column left)
     (or (not= (:size left) (:size right))
-        (not= (:decimals left) (:decimals right))) (resize (calculate-new-sizes right left))
+        (not= (:decimals left) (:decimals right))) (resize-column (calculate-new-sizes right left))
     :else nil))
 
 
