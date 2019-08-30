@@ -80,7 +80,7 @@
     :else {:size (count (str v)) :decimals 0}))
 
 
-(defn create-table [ds csv name]
+(defn create-table! [ds csv name]
   (let [ddl-string (generate-ddl csv name)]
     (jdbc/execute! ds [ddl-string])))
 
@@ -123,7 +123,7 @@
   (keep may-be-resize (left-join-pair #(= (:name %1) (:name %2)) csv-columns db-columns)))
 
 
-(defn resize-if-necessary [ds record-map table-name]
+(defn resize-if-necessary! [ds record-map table-name]
   (let [db-columns (db/get-summarized-columns ds table-name)
         csv-columns (map #(assoc (weigh (val %1)) :name (key %1)) record-map)
         queries (get-resize-queries csv-columns db-columns)]
@@ -131,12 +131,12 @@
 
 
 
-(defn insert-data [ds csv str-table-name]
+(defn insert-data! [ds csv str-table-name]
   (let [map-list (to-map-list csv)
         kw-table-name (keyword str-table-name)]
     (run! (fn [record-item]
             (do-with-retry #(sql/insert! ds kw-table-name record-item)
-                           #(resize-if-necessary ds record-item str-table-name))) map-list)))
+                           #(resize-if-necessary! ds record-item str-table-name))) map-list)))
 
 
 
@@ -144,8 +144,8 @@
   (let [table-record (db/get-tables ds name)
         table-count (count table-record)]
     (when (= 0 table-count)
-      (create-table ds csv name))
-    (insert-data ds csv name)))
+      (create-table! ds csv name))
+    (insert-data! ds csv name)))
 
 
 
