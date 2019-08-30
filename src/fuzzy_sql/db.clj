@@ -20,15 +20,14 @@
 
 (defn get-summarized-columns [ds table-name]
   (map #(correct-size {:size       (:COLUMN_SIZE %1)
-                       :decimals   (:DECIMAL_DIGITS %1)
-                       :name       (keyword (:COLUMN_NAME %1))
+                       :decimals   (or (:DECIMAL_DIGITS %1) 0)
+                       :name       (:COLUMN_NAME %1)
                        :type       (:TYPE_NAME %1)
                        :table-name table-name})
        (get-columns ds table-name)))
 
 
 
-println
 (defn get-tables [ds table]
   (with-connection ds (fn [c]
                         (-> (.getMetaData c)

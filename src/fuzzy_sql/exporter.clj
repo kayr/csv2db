@@ -5,7 +5,6 @@
     [next.jdbc.sql :as sql])
   (:import (java.util Date)))
 
-(declare unwind-values-to-keys)
 
 (defn create-map-vk [[k values]]
   (if (coll? values)
@@ -83,19 +82,6 @@
     :else {:size (count (str v)) :decimals 0}))
 
 
-(defn- sum-weight [weight] (+ (:size weight) (:decimals weight)))
-
-
-(defn detect-max-size-per-header [csv]
-  (let [header (get-header csv)
-        largest-per-header (map #(apply max
-                                        (map sum-weight
-                                             (map weigh (get-column csv %1))))
-                                header)
-        header-and-max (zipmap header largest-per-header)]
-    header-and-max))
-
-
 (defn create-table [ds csv name]
   (let [ddl-string (generate-ddl csv name)]
     (jdbc/execute! ds [ddl-string])))
@@ -136,7 +122,7 @@
   (cond
     (nil? right) (add-column left)
     (or (not= (:size left) (:size right))
-        (not= (:decimals left) (:decimals right))) (resize (calculate-new-sizes left right))
+        (not= (:decimals left) (:decimals right))) (resize (calculate-new-sizes right left))
     :else nil))
 
 
@@ -152,11 +138,12 @@
 
 
 
-(defn insert-data [ds csv name]
-  (let [map-list (to-map-list csv), table-name (keyword name)]
+(defn insert-data [ds csv str-table-name]
+  (let [map-list (to-map-list csv)
+        kw-table-name (keyword str-table-name)]
     (run! (fn [record-item]
-            (do-with-retry #(sql/insert! ds table-name record-item)
-                           #(resize-if-necessary ds csv table-name))) map-list)))
+            (do-with-retry #(sql/insert! ds kw-table-name record-item)
+                           #(resize-if-necessary ds record-item str-table-name))) map-list)))
 
 
 
