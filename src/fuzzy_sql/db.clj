@@ -13,12 +13,28 @@
                             (.getColumns nil nil table nil)
                             (rs/datafiable-result-set ds {})))))
 
+(defn- correct-size [col]
+  (if (> (or (:decimals col) 0) 0)
+    (assoc col :size (- (:size col) (:decimals col))) col))
 
+
+(defn get-summarized-columns [ds table-name]
+  (map #(correct-size {:size       (:COLUMN_SIZE %1)
+                       :decimals   (:DECIMAL_DIGITS %1)
+                       :name       (keyword (:COLUMN_NAME %1))
+                       :type       (:TYPE_NAME %1)
+                       :table-name table-name})
+       (get-columns ds table-name)))
+
+
+
+println
 (defn get-tables [ds table]
-  (with [c (jdbc/get-connection ds)]
-        (-> (.getMetaData c)
-            (.getTables nil nil table (into-array String ["TABLE"]))
-            (rs/datafiable-result-set ds {}))))
+  (with-connection ds (fn [c]
+                        (-> (.getMetaData c)
+                            (.getTables nil nil table (into-array String ["TABLE"]))
+                            (rs/datafiable-result-set ds {})))))
+
 
 
 ;[{:IS_NULLABLE "YES",
@@ -67,7 +83,7 @@
 ;  :NULLABLE 1,
 ;  :TABLE_SCHEM nil,
 ;  :IS_AUTOINCREMENT "NO",
-;  :TABLE_NAME "table1",
+ ;  :TABLE_NAME "table1",
 ;  :DATA_TYPE -5}
 ; {:IS_NULLABLE "YES",
 ;  :IS_GENERATEDCOLUMN "NO",

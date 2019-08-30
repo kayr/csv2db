@@ -60,7 +60,7 @@
 
 (defn detect-db-type [csv name] (JAVA-TO-SQL-DB-MAPPING (detect-data-type csv name)))
 
-(defn coalesce [a b] (if (nil? a) b a))
+(defn if-null [a b] (if (nil? a) b a))
 
 (defn generate-ddl [csv name]
   (let [headers (get-header csv)
@@ -78,7 +78,7 @@
   (cond
     (instance? String v) {:size (count v) :decimals 0}
     (instance? Number v) (let [[size decimals] (.split (str v) "\\.")]
-                           {:size (count size) :decimals (count (coalesce decimals ""))})
+                           {:size (count size) :decimals (count (if-null decimals ""))})
     (instance? Date v) {:size 1 :decimals 0}
     :else {:size (count (str v)) :decimals 0}))
 
@@ -100,25 +100,73 @@
   (let [ddl-string (generate-ddl csv name)]
     (jdbc/execute! ds [ddl-string])))
 
+(defn do-with-retry [do-fn correct-fn]
+  (try (do-fn)
+       (catch Exception _
+         (do (correct-fn) (do-fn)))))
+
+
+(defn left-join-pair [join-fn col1 col2]
+  (map (fn [val1] {:left  val1
+                   :right (some (fn [val2] (when (join-fn val1 val2) val2)) col2)}) col1))
+
+(defn get-mysql-data-type [type size decimals]
+  (str type "(" (if (> decimals 0) (str size "," decimals) (str size)) ")"))
+
+(defn resize [{col-name :name :keys [size decimals :type table-name]}]
+  ;ALTER TABLE students MODIFY name VARCHAR(30)
+  (str "ALTER TABLE `" table-name "` MODIFY " (name col-name) " "
+       (get-mysql-data-type type size decimals)))
+
+
+
+
+(defn add-column [{col-name :name :keys [size decimals type table-name]}]
+  (str "ALTER TABLE `" table-name "` ADD COLUMN " (name col-name) " " (get-mysql-data-type type size decimals)))
+
+(defn calculate-new-sizes [clm1 clm2]
+  (let [{r-size :size r-decimals :decimals} clm1
+        {l-size :size l-decimals :decimals} clm2]
+    (-> clm1
+        (assoc,, :size (max r-size l-size))
+        (assoc,, :decimals (max r-decimals l-decimals)))))
+
+
+(defn may-be-resize [{left :left, right :right}]
+  (cond
+    (nil? right) (add-column left)
+    (or (not= (:size left) (:size right))
+        (not= (:decimals left) (:decimals right))) (resize (calculate-new-sizes left right))
+    :else nil))
+
+
+(defn get-resize-queries [csv-columns db-columns]
+  (keep may-be-resize (left-join-pair #(= (:name %1) (:name %2)) csv-columns db-columns)))
+
+
+(defn resize-if-necessary [ds record-map table-name]
+  (let [db-columns (db/get-summarized-columns ds table-name)
+        csv-columns (map #(assoc (weigh (val %1)) :name (key %1)) record-map)
+        queries (get-resize-queries csv-columns db-columns)]
+    (run! #(jdbc/execute-one! ds [%1]) queries)))
+
+
+
 (defn insert-data [ds csv name]
-  (let [map-list (to-map-list csv)
-        table-name (keyword name)]
-    (sql/insert! ds table-name map-list)))
+  (let [map-list (to-map-list csv), table-name (keyword name)]
+    (run! (fn [record-item]
+            (do-with-retry #(sql/insert! ds table-name record-item)
+                           #(resize-if-necessary ds csv table-name))) map-list)))
 
 
 
-(defn create-or-insert [ds csv name]
+(defn create-or-insert! [ds csv name]
   (let [table-record (db/get-tables ds name)
         table-count (count table-record)]
     (when (= 0 table-count)
       (create-table ds csv name))
     (insert-data ds csv name)))
 
-
-
-(defn resize-if-necessary [ds csv table-name]
-  (let [header-sizes (detect-max-size-per-header csv)]
-    header-sizes))
 
 
 
