@@ -82,7 +82,10 @@
 
 
 (defn get-mysql-data-type [type size decimals]
-  (str type "(" (if (> decimals 0) (str size "," decimals) (str size)) ")"))
+  (if (or (.equalsIgnoreCase "numeric" type)
+          (.equalsIgnoreCase "decimal" type))
+    (str type "(" (str (+ decimals size) "," decimals) ")")
+    (str type "(" size ")")))
 
 
 (defn resize-column [{col-name :name :keys [size decimals :type table-name]}]

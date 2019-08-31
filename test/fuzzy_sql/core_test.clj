@@ -14,7 +14,8 @@
 
 (def test-data [["header" "age" "someNulls"]
                 ["value 1" 3 nil]
-                ["value 2" 4 3.4M]])
+                ["value 2" 4 3.4M]
+                ])
 
 (def test-data-large [["header" "age" "someNulls"]
                       [(repeat-string 300 "x") 3 nil]
@@ -25,7 +26,7 @@
 
 (def test-data-large-date [["header" "age" "someNulls" "newColl", "new_col_3"]
                            ["hhh" 3 nil (now-to-sec!!) nil]
-                           ["value 2" 4 3.4M nil 3.9999877283M]])
+                           ["value 2" 4 3443.4344334M nil 3.9999877283M]])
 
 (defn convert-to-key-csv [[header & body]]
   (cons (map #(keyword %1) header) body))
