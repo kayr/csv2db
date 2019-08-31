@@ -138,9 +138,5 @@
     (when (= 0 table-count) (create-table! ds csv name))
     (insert-data! ds csv name)))
 
-; check if table exists
-; create table
-; for each record insert
-; if fails to to adjust table
-; insert again
+
 
