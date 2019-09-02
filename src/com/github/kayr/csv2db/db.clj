@@ -1,4 +1,4 @@
-(ns fuzzy-sql.db
+(ns com.github.kayr.csv2db.db
   (:require [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]))
 

@@ -1,4 +1,4 @@
-(ns fuzzy-sql.utils)
+(ns com.github.kayr.csv2db.utils)
 
 (defn create-map-vk [[k values]]
   (if (coll? values)

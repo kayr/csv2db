@@ -1,8 +1,8 @@
-(ns fuzzy-sql.exporter
+(ns com.github.kayr.csv2db.exporter
   (:require
-    [fuzzy-sql.db :as db]
+    [com.github.kayr.csv2db.db :as db]
     [next.jdbc :as jdbc]
-    [fuzzy-sql.utils :as utils]
+    [com.github.kayr.csv2db.utils :as utils]
     [next.jdbc.sql :as sql])
   (:import (java.util Date)))
 
@@ -74,7 +74,8 @@
 (defmethod gen-col-type "bigint" [data-type _] data-type)
 
 (defmethod gen-col-type "numeric" [data-type {:keys [size decimals]}]
-  (str data-type "(" (+ size decimals) "," decimals ")"))
+  (let [final-decimals (max decimals 6)]
+    (str data-type "(" (+ size final-decimals) "," final-decimals ")")))
 
 (defmethod gen-col-type :default [data-type {:keys [size decimals]}]
   (str data-type "(" (if (> decimals 0) (str size "," decimals) (str size)) ")"))
