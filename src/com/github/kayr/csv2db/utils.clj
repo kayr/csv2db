@@ -27,4 +27,5 @@
 
 (defn left-join-pair [join-fn col1 col2]
   (map (fn [val1] {:left  val1
-                   :right (some (fn [val2] (when (join-fn val1 val2) val2)) col2)}) col1))
+                   :right (some (fn [val2] (when (join-fn val1 val2) val2)) col2)})
+       col1))
